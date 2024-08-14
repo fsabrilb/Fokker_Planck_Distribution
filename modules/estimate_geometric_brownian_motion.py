@@ -9,8 +9,41 @@ Created on Sat April 23 2024
 import warnings
 import numpy as np # type: ignore
 
+from scipy.stats import norm # type: ignore
+
 # Global options ----
 warnings.filterwarnings("ignore")
+
+# Estimation of probability density function for the restricted Brownian Motion (RBM) ----
+def estimate_pdf_gbm(x, t, mu, sigma, x_threshold):
+    """Estimation of probability density function of restricted geometric
+    Brownian motion:
+
+    Args:
+    ---------------------------------------------------------------------------
+    x : float or numpy array dtype float
+        Arbitrary vector of real values of the same size of t (time)
+    t : float or numpy array dtype float
+        Arbitrary scalar or vector of real values of the same size of x (space)
+    mu : float
+        Stochastic drift of geometric Brownian motion
+    sigma : float
+        Difussion coefficient of geometric Brownian motion
+    x_threshold : float
+        Threshold value for the support of the probability density function
+    
+    Returns:
+    ---------------------------------------------------------------------------
+    z : float or numpy array dtype float
+        probability density function of restricted geometric Brownian motion
+    """
+    z_x = (np.log(x) - mu * t) / sigma
+    z_v = (np.log(x_threshold) - mu * t) / sigma
+    normalization = sigma * norm.sf(x = z_v, loc = 0, scale = np.sqrt(t)) * x
+
+    z = norm.pdf(x = z_x, loc = 0, scale = np.sqrt(t)) / normalization
+
+    return z
 
 # Estimation of stationary probability density function for restricted geometric Brownian Motion (GBM) ----
 def estimate_stationary_pdf_gbm(x, x_threshold, lambda_):

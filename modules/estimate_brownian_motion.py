@@ -14,6 +14,37 @@ from scipy.stats import norm # type: ignore
 # Global options ----
 warnings.filterwarnings("ignore")
 
+# Estimation of probability density function for the restricted Brownian Motion (RBM) ----
+def estimate_pdf_rbm(x, t, mu, sigma, x_threshold):
+    """Estimation of probability density function of restricted Brownian
+    motion:
+
+    Args:
+    ---------------------------------------------------------------------------
+    x : float or numpy array dtype float
+        Arbitrary vector of real values of the same size of t (time)
+    t : float or numpy array dtype float
+        Arbitrary scalar or vector of real values of the same size of x (space)
+    mu : float
+        Stochastic drift of Brownian motion
+    sigma : float
+        Difussion coefficient of Brownian motion
+    x_threshold : float
+        Threshold value for the support of the probability density function
+    
+    Returns:
+    ---------------------------------------------------------------------------
+    z : float or numpy array dtype float
+        probability density function of restricted Brownian motion
+    """
+    z_x = (x - mu * t) / sigma
+    z_v = (x_threshold - mu * t) / sigma
+    normalization = sigma * norm.sf(x = z_v, loc = 0, scale = np.sqrt(t))
+
+    z = norm.pdf(x = z_x, loc = 0, scale = np.sqrt(t)) / normalization
+
+    return z
+
 # Estimation of stationary probability density function for the restricted Brownian Motion (RBM) ----
 def estimate_stationary_pdf_rbm(x, x_threshold, lambda_):
     r"""Estimation of stationary probability density function of restricted

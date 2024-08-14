@@ -522,20 +522,6 @@ def plot_brownian_motion(
     # Entropy plot
     ax[2].plot(t_rbm, entropy_rbm, label = "Entropy data")
     ax[2].plot(t_rbm, entropy_prome, color = "darkgreen", label = "Entropy fitting")
-    ax[2].fill_between(
-        t_rbm,
-        entropy_lower * 0 + entropy_prome,
-        entropy_upper * 0 + entropy_prome,
-        where = (
-            (entropy_upper >= entropy_lower) &
-            (entropy_upper >= entropy_prome) &
-            (entropy_prome >= entropy_lower)
-        ),
-        alpha = 0.19,
-        facecolor = "darkgreen",
-        interpolate = True,
-        label = "Entropy fitting"
-    )
     
     # Entropy production rate plot
     ax[3].hlines(y = 0.0, xmin = 0.0, xmax = t_max, color = "r", linewidth = 2, zorder = 2)
