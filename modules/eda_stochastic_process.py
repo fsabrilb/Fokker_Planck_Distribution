@@ -16,11 +16,8 @@ import matplotlib.ticker as mtick # type: ignore
 import eda_levy_flight as eda_lf
 import eda_misc_functions as eda_mf
 
-import estimate_brownian_motion as ebm
 import estimate_stochastic_process as esp
-import estimate_geometric_brownian_motion as egbm
 
-from scipy.optimize import curve_fit # type: ignore
 from matplotlib import rcParams # type: ignore
 
 # Global options ----
@@ -482,12 +479,6 @@ def plot_simple_pdf(
         If True, the result is the value of the probability density function
         at the bin, normalized such that the integral over the range is 1
         (default value True)
-    significance_a : float
-        Level of statistical significance at the limits used for curve fitting
-        (default value 0.01)
-    significance_b : int
-        Exponent for statistical significance at the limits used for curve
-        fitting when values are close to zero (default value -4)
     p_norm : float
         p norm used in the estimation on mean absolute error MAE_p (default
         value 1)
@@ -649,7 +640,7 @@ def plot_simple_pdf(
             ax[i, j].set_yscale("log")
             if geometric_flag == False:
                 ax[i, j].set_ylabel(r"$\Psi_{{LF}}(x,t)$", fontsize = fontsize_labels + 2)
-                ax[i, j].set_xscale("symlog")
+                ax[i, j].set_xscale("symlog", subs = [2, 3, 4, 5, 6, 7, 8, 9])
             else:
                 ax[i, j].set_ylabel(r"$\Psi_{{GLF}}(x,t)$", fontsize = fontsize_labels + 2)
                 ax[i, j].set_xscale("log")
@@ -660,7 +651,12 @@ def plot_simple_pdf(
                 ax[i, j].set_ylabel(r"$\Psi_{{GBM}}(x,t)$", fontsize = fontsize_labels + 2)
 
         ax[i, j].set_title(
-            r"({}) $t={}$, $R^{{2}}={}\%$, $MAE_{{p}}={}$".format(chr(j + 65), t, r2_params, ae_params),
+            r"({}) $t={}$, $R^{{2}}={}\%$, $MAE_{{p}}=$ {}".format(
+                chr(k + 65),
+                t,
+                r2_params,
+                mf.define_sci_notation_latex(number = ae_params, significant_figures = 5)
+            ),
             loc = "left",
             y = 1.005,
             fontsize = fontsize_labels

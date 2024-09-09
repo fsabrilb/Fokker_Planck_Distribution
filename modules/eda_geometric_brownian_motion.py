@@ -24,111 +24,18 @@ warnings.filterwarnings("ignore")
 pd.options.mode.chained_assignment = None
 pd.set_option('display.max_columns', None)
 
-# Get theoretical histogram data for geometric Brownian motion paths ----
-def get_histogram_geometric_brownian_motion(x, t, mu, sigma, x_threshold, hist_gbm, alpha=0.01, beta=-4):
-    """Get theoretical histogram data (probability density function) from
-    multiple simulations made for a geometric Brownian motion for a specific
-    time t
-
-    Args:
-    ---------------------------------------------------------------------------
-    x : float or numpy array dtype float
-        Arbitrary vector of real values of the same size of t (time)
-    t : float or numpy array dtype float
-        Arbitrary scalar or vector of real values of the same size of x (space)
-    mu : float
-        Stochastic drift of geometric Brownian motion
-    sigma : float
-        Difussion coefficient of geometric Brownian motion
-    x_threshold : float
-        Threshold value for the support of the probability density function
-    hist_gbm : float or numpy array dtype float
-        The values of the histogram of simulated data of restricted geometric
-        Brownian motion
-    alpha : float
-        Level of statistical significance at the limits used for curve fitting
-        (default value 0.01)
-    beta : int
-        Exponent for statistical significance at the limits used for curve
-        fitting when values are close to zero (default value -4)
-    
-    Returns:
-    ---------------------------------------------------------------------------
-    hist_transient : float or numpy array dtype float
-        The values of the histogram (probability density function) for
-        transient state of restricted geometric Brownian motion
-    hist_stationary : float or numpy array dtype float
-        The values of the histogram (probability density function) for
-        stationary state of restricted geometric Brownian motion
-    params_transient : numpy array dtype float
-        Optimal values for the parameters t, mu, sigma, x_threshold with bounds
-    params_stationary : numpy array dtype float
-        Optimal values for the parameters x_threshold, lambda_ with bounds
-    """
-
-    # Theoretical parameter for stationary state from parameters of transient state
-    lambda_ = 2 * mu / (sigma ** 2) - 2
-
-    # Theoretical histogram data (probability density function)
-    hist_transient = egbm.estimate_pdf_gbm(x = x, t = t, mu = mu, sigma = sigma, x_threshold = x_threshold)
-    hist_stationary = egbm.estimate_stationary_pdf_gbm(
-        x = x,
-        x_threshold = x_threshold,
-        lambda_ = lambda_
-    )
-    
-    # Curve fitting - Bounds
-    t_lower, t_upper = eda_mf.get_bounds(z = t, alpha = alpha, beta = beta)
-    mu_lower, mu_upper = eda_mf.get_bounds(z = mu, alpha = alpha, beta = beta)
-    sigma_lower, sigma_upper = eda_mf.get_bounds(z = sigma, alpha = alpha, beta = beta)
-    lambda_lower, lambda_upper = eda_mf.get_bounds(z = lambda_, alpha = alpha, beta = beta)
-    x_threshold_lower, x_threshold_upper = eda_mf.get_bounds(z = x_threshold, alpha = alpha, beta = beta)
-
-    bounds_transient = ([t_lower, mu_lower, sigma_lower, x_threshold_lower], [t_upper, mu_upper, sigma_upper, x_threshold_upper])
-    bounds_stationary = ([x_threshold_lower, lambda_lower], [x_threshold_upper, lambda_upper])
-    
-    # Curve fitting - Adjustment parameters
-    popt_transient, pcov_transient = curve_fit(
-        egbm.estimate_pdf_gbm,
-        x,
-        hist_gbm,
-        p0 = [t, mu, sigma, x_threshold],
-        bounds = bounds_transient
-    )
-    popt_stationary, pcov_stationary = curve_fit(
-        egbm.estimate_stationary_pdf_gbm,
-        x,
-        hist_gbm,
-        p0 = [x_threshold, lambda_],
-        bounds = bounds_stationary
-    )
-
-    # Curve fitting - Adjustment parameters with bounds
-    popt_transient, lower_transient, upper_transient = eda_mf.get_params_error(
-        popt = popt_transient,
-        pcov = pcov_transient
-    )
-    popt_stationary, lower_stationary, upper_stationary = eda_mf.get_params_error(
-        popt = popt_stationary,
-        pcov = pcov_stationary
-    )
-
-    params_transient = [popt_transient, lower_transient, upper_transient]
-    params_stationary = [popt_stationary, lower_stationary, upper_stationary]
-
-    return hist_transient, hist_stationary, params_transient, params_stationary
-
-# Get theoretical entropy and entropy production rate data for the restricted geometric Brownian Motion (GBM) ----
-def get_entropy_gbm(
-    t_gbm,
-    entropy_gbm,
-    t_midpoint_gbm,
-    epr_gbm,
+# Get theoretical entropy and entropy production rate data for the restricted geometric Brownian Motion (RGBM) ----
+def get_entropy_rgbm(
+    t_rgbm,
+    entropy_rgbm,
+    t_midpoint_rgbm,
+    epr_rgbm,
     mu_guess,
     sigma_guess,
-    amplitude_1_guess,
-    amplitude_2_guess,
-    phi_guess,
+    x0_guess,
+    t0_guess,
+    x_threshold_guess,
+    amplitude_guess,
     entropy_gauge_guess,
     epr_gauge_guess
 ):
@@ -137,45 +44,47 @@ def get_entropy_gbm(
 
     Args:
     ---------------------------------------------------------------------------
-    t_gbm : float or numpy array dtype float
+    t_rgbm : float or numpy array dtype float
         The values of times used to estimated the entropy of simulated data of
         restricted geometric Brownian motion
-    entropy_gbm : float or numpy array dtype float
+    entropy_rgbm : float or numpy array dtype float
         The values of the entropy of simulated data of restricted geometric
         Brownian motion
-    t_midpoint_gbm : float or numpy array dtype float
+    t_midpoint_rgbm : float or numpy array dtype float
         The values of times used to estimated the entropy production rate of
         simulated data of restricted geometric Brownian motion
-    epr_gbm : float or numpy array dtype float
+    epr_rgbm : float or numpy array dtype float
         The values of the entropy production rate of simulated data of
         restricted geometric Brownian motion
     mu_guess : float
-        Initial guess for the drift of geometric Brownian motion
+        Initial guess for the drift of restricted geometric Brownian motion
     sigma_guess : float
-        Initial guess for the diffusion coefficient of geometric Brownian
+        Initial guess for the diffusion coefficient of restricted geometric
+        Brownian motion
+    x0_guess : float
+        Initial guess for the initial position of restricted geometric
+        Brownian motion
+    t0_guess : float
+        Initial guess for the initial time of restricted geometric Brownian
         motion
-    amplitude_1_guess : float
-        Initial guess for the amplitude of entropy of geometric Brownian
-        motion
-    amplitude_2_guess : float
-        Initial guess for the amplitude of temporal linear term entropy of
-        geometric Brownian motion
-    phi_guess : float
-        Initial guess for the temporal phase of entropy of geometric
+    x_threshold_guess : float
+        Initial guess for the threshold of restricted geometric Brownian motion
+    amplitude_guess : float
+        Initial guess for the amplitude of entropy of restricted geometric
         Brownian motion
     entropy_gauge_guess : float
         Initial guess for the initial entropy of the restricted geometric
         Brownian motion (gauge value of entropy)
     epr_gauge_guess : float
         Initial guess for the initial entropy production rate of the
-        restricted geometricBrownian motion (gauge value of entropyproduction
+        restricted geometric Brownian motion (gauge value of entropy production
         rate)
     
     Returns:
     ---------------------------------------------------------------------------
     params_entropy : numpy array dtype float
-        Optimal values for the entropy parameters sigma, amplitude, phi, h
-        (gauge value of entropy) with bounds
+        Optimal values for the entropy parameters mu, sigma, x0, t0,
+        x_threshold, amplitude, h (gauge value of entropy) with bounds
     params_epr : numpy array dtype float
         Optimal values for the entropy production rate (epr) parameters sigma,
         amplitude, phi, h (gauge value of epr) with bounds
@@ -183,44 +92,50 @@ def get_entropy_gbm(
 
     # Curve fitting - Adjustment parameters
     popt_entropy, pcov_entropy = curve_fit(
-        egbm.estimate_shannon_entropy_gbm,
-        t_gbm,
-        entropy_gbm,
-        p0 = [mu_guess, sigma_guess, amplitude_1_guess, amplitude_2_guess, phi_guess, entropy_gauge_guess]
+        egbm.estimate_shannon_entropy_rgbm,
+        t_rgbm,
+        entropy_rgbm,
+        p0 = [mu_guess, sigma_guess, x0_guess, t0_guess, x_threshold_guess, amplitude_guess, entropy_gauge_guess]
     )
-    popt_epr, pcov_epr = curve_fit(
-        egbm.estimate_epr_gbm,
-        t_midpoint_gbm,
-        epr_gbm,
-        p0 = [mu_guess, sigma_guess, 0, amplitude_2_guess, phi_guess, epr_gauge_guess]
-    )
+
+    try:
+        popt_epr, pcov_epr = curve_fit(
+            egbm.estimate_epr_rgbm,
+            t_midpoint_rgbm,
+            epr_rgbm,
+            p0 = [mu_guess, sigma_guess, x0_guess, t0_guess, x_threshold_guess, amplitude_guess, epr_gauge_guess]
+        )
+
+        popt_epr, lower_epr, upper_epr = eda_mf.get_params_error(
+            popt = popt_epr,
+            pcov = pcov_epr
+        )
+
+        params_epr = [popt_epr, lower_epr, upper_epr]
+    except:
+        popt_epr = [mu_guess, sigma_guess, x0_guess, t0_guess, x_threshold_guess, amplitude_guess, epr_gauge_guess]
+        params_epr = [popt_epr, popt_epr, popt_epr]
 
     # Curve fitting - Adjustment parameters with bounds
     popt_entropy, lower_entropy, upper_entropy = eda_mf.get_params_error(
         popt = popt_entropy,
         pcov = pcov_entropy
     )
-    popt_epr, lower_epr, upper_epr = eda_mf.get_params_error(
-        popt = popt_epr,
-        pcov = pcov_epr
-    )
-
+    
     params_entropy = [popt_entropy, lower_entropy, upper_entropy]
-    params_epr = [popt_epr, lower_epr, upper_epr]
+    
 
     return params_entropy, params_epr
 
-# Plot final Exploratory Data Analysis for geometric Brownian motion paths ----
-def plot_geometric_brownian_motion(
+# Plot entropy for restricted geometric Brownian motion paths ----
+def plot_entropy_geometric_brownian_motion(
     df_gbm,
     mu,
     sigma,
-    threshold,
+    x0,
+    t0,
+    x_threshold,
     n_steps,
-    bins=10,
-    density=True,
-    alpha=0.01,
-    beta=-4,
     p=1,
     ma_window=10,
     p_norm=1,
@@ -238,7 +153,7 @@ def plot_geometric_brownian_motion(
     save_figures=True,
     output_path="../output_files",
     information_name="",
-    input_generation_date="2024-04-27"
+    input_generation_date="2024-04-22"
 ):
     """Plot exploratory data analysis from multiple simulations made for a
     restricted geometric Brownian motion
@@ -255,6 +170,10 @@ def plot_geometric_brownian_motion(
         Stochastic drift of geometric Brownian motion
     sigma : float
         Difussion coefficient of geometric Brownian motion
+    x0 : float
+        Initial condition of geometric Brownian motion path
+    t0 : float
+        Initial time for geometric Brownian motion path
     x_threshold : float
         Threshold value for the support of the probability density function
     n_steps : int
@@ -311,7 +230,7 @@ def plot_geometric_brownian_motion(
     information_name : string
         Name of the output plot (default value "")
     input_generation_date : string
-        Date of generation (control version) (default value "2024-04-27")
+        Date of generation (control version) (default value "2024-04-22")
         
     Returns:
     ---------------------------------------------------------------------------
@@ -333,114 +252,126 @@ def plot_geometric_brownian_motion(
     t_max = df_gbm["time"].max()
     dt = (t_max - t_min) / (n_steps - 1)
 
-    # Histogram data of simulated data
-    bins_gbm, bins_midpoint_gbm, hist_gbm = eda_mf.get_histogram_stochastic_process(
-        df_sp = df_gbm,
-        t = t_max,
-        bins = bins,
-        density = density
-    )
-    del(bins_gbm)
-
-    # Histogram theoretical data
-    hist_transient, hist_stationary, params_transient, params_stationary = get_histogram_geometric_brownian_motion(
-        x = bins_midpoint_gbm,
-        t = t_max,
+    # Entropy and entropy production rate data
+    x, t = df_gbm["value"].values, df_gbm["time"].values
+    df_gbm["entropy"] = egbm.estimate_pdf_rgbm(
+        x = x,
+        t = t,
         mu = mu,
         sigma = sigma,
-        x_threshold = threshold,
-        hist_gbm = hist_gbm,
-        alpha = alpha,
-        beta = beta
+        x0 = x0,
+        t0 = t0,
+        x_threshold = x_threshold
     )
 
-    # Diffusion coefficient data
-    mean_gbm, variance_gbm, params_diffusion = eda_mf.get_diffusion_law_stochastic_process(df_sp = df_gbm)
-
-    # Entropy and entropy production rate data
-    t_gbm, entropy_gbm, t_midpoint_gbm, epr_gbm, epr_smooth_gbm = eda_mf.get_entropy_stochastic_process(
-        df_sp = df_gbm,
-        dt = dt,
-        p = p,
-        ma_window = ma_window
+    df_entropy = (
+        df_gbm
+            .groupby(["time"])["entropy"]
+            .apply(lambda x: np.nanmean(-np.log(x)))
+            .reset_index()
+            .rename(columns = {"value" : "entropy"})
     )
+    df_entropy["entropy_production_rate"] = df_entropy["entropy"].diff(periods = 1) / dt
+    df_entropy["epr_smooth_time"] = df_entropy["time"].rolling(window = ma_window).mean()
+    df_entropy["epr_smooth_std"] = df_entropy["entropy_production_rate"].rolling(window = ma_window).std()
+    df_entropy["epr_smooth_mean"] = df_entropy["entropy_production_rate"].rolling(window = ma_window).mean()
+    df_entropy["epr_smooth_lower"] = df_entropy["epr_smooth_mean"] - df_entropy["epr_smooth_std"]
+    df_entropy["epr_smooth_upper"] = df_entropy["epr_smooth_mean"] + df_entropy["epr_smooth_std"]
 
-    epr_smooth_gbm_time = epr_smooth_gbm[0]
-    epr_smooth_gbm_mean = epr_smooth_gbm[1]
-    epr_smooth_gbm_lower = epr_smooth_gbm[2]
-    epr_smooth_gbm_upper = epr_smooth_gbm[3]
+    t_midpoint_sp = np.zeros(len(df_entropy["time"].values) - 1)
+    for k in np.arange(0, len(df_entropy["time"].values) - 1, 1):
+        t_midpoint_sp[k] = 0.5 * (df_entropy["time"].values[k] + df_entropy["time"].values[k+1])
+    
+    df_entropy = df_entropy[df_entropy["time"] != df_entropy["time"].min()]
+
+    # Final data
+    t_rgbm = df_entropy["time"].values
+    entropy_rgbm = df_entropy["entropy"].values
+    t_midpoint_rgbm = t_midpoint_sp
+    epr_rgbm = df_entropy["entropy_production_rate"].values
+
+    df_entropy = df_entropy[~df_entropy["epr_smooth_mean"].isnull()]
+
+    epr_time = df_entropy["epr_smooth_time"].values
+    epr_mean = df_entropy["epr_smooth_mean"].values
+    epr_lower = df_entropy["epr_smooth_lower"].values
+    epr_upper = df_entropy["epr_smooth_upper"].values
+
+    epr_smooth_rgbm = [epr_time, epr_mean, epr_lower, epr_upper]
+    del(epr_smooth_rgbm)
 
     # Entropy and entropy production rate theoretical data
-    params_entropy, params_epr = get_entropy_gbm(
-        t_gbm = t_gbm,
-        entropy_gbm = entropy_gbm,
-        t_midpoint_gbm = t_midpoint_gbm,
-        epr_gbm = epr_gbm,
+    params_entropy, params_epr = get_entropy_rgbm(
+        t_rgbm = t_rgbm,
+        entropy_rgbm = entropy_rgbm,
+        t_midpoint_rgbm = t_midpoint_rgbm,
+        epr_rgbm = epr_rgbm,
         mu_guess = mu,
         sigma_guess = sigma,
-        amplitude_1_guess = -1 * 10**-4,
-        amplitude_2_guess = -1 * 10**-1,
-        phi_guess = 0,
-        entropy_gauge_guess = np.max(entropy_gbm),
-        epr_gauge_guess = np.mean(epr_gbm)
+        x0_guess = x0,
+        t0_guess = t0,
+        x_threshold_guess = x_threshold,
+        amplitude_guess = 1,
+        entropy_gauge_guess = entropy_rgbm[0],
+        epr_gauge_guess = 0
     )
 
     # Theoretical data fitting from parameters and respective errors
-    transient_prome = egbm.estimate_pdf_gbm(bins_midpoint_gbm, *params_transient[0])
-    transient_lower = egbm.estimate_pdf_gbm(bins_midpoint_gbm, *params_transient[1])
-    transient_upper = egbm.estimate_pdf_gbm(bins_midpoint_gbm, *params_transient[2])
+    entropy_prome = egbm.estimate_shannon_entropy_rgbm(
+        t = t_rgbm,
+        mu = params_entropy[0][0],
+        sigma = params_entropy[0][1],
+        x0 = params_entropy[0][2],
+        t0 = params_entropy[0][3],
+        x_threshold = params_entropy[0][4],
+        amplitude = params_entropy[0][5],
+        h = params_entropy[0][6]
+    )    
+    epr_prome = egbm.estimate_epr_rgbm(
+        t = t_midpoint_rgbm,
+        mu = params_epr[0][0],
+        sigma = params_epr[0][1],
+        x0 = params_epr[0][2],
+        t0 = params_epr[0][3],
+        x_threshold = params_epr[0][4],
+        amplitude = params_entropy[0][5],
+        h = params_epr[0][6] # Only different parameter for EPR
+    )
 
-    stationary_prome = egbm.estimate_stationary_pdf_gbm(bins_midpoint_gbm, *params_stationary[0])
-    stationary_lower = egbm.estimate_stationary_pdf_gbm(bins_midpoint_gbm, *params_stationary[1])
-    stationary_upper = egbm.estimate_stationary_pdf_gbm(bins_midpoint_gbm, *params_stationary[2])
+    # Mask for correct plot of entropy production rate
+    if entropy_rgbm[1] - entropy_rgbm[0] > 0:
+        mask = epr_prome > 0
+    else:
+        mask = epr_prome < 0
 
-    diffusion_prome = mf.temporal_fluctuation_scaling(mean_gbm, *params_diffusion[0])
-    diffusion_lower = mf.temporal_fluctuation_scaling(mean_gbm, *params_diffusion[1])
-    diffusion_upper = mf.temporal_fluctuation_scaling(mean_gbm, *params_diffusion[2])
+    t_midpoint_rgbm_ = t_midpoint_rgbm[mask]
+    epr_rgbm_ = epr_rgbm[mask]
+    epr_prome = epr_prome[mask]
 
-    entropy_prome = egbm.estimate_shannon_entropy_gbm(t_gbm, *params_entropy[0])
-    entropy_lower = egbm.estimate_shannon_entropy_gbm(t_gbm, *params_entropy[1])
-    entropy_upper = egbm.estimate_shannon_entropy_gbm(t_gbm, *params_entropy[2])
+    # Estimation of R squared and Mean Absolute Error (MAE_p)
+    r2_entropy = 1 - np.nansum(np.power(entropy_rgbm - entropy_prome, 2)) / np.nansum(np.power(entropy_rgbm - np.nanmean(entropy_rgbm), 2))
+    r2_entropy = round(max(0, r2_entropy) * 100, significant_figures)
+    r2_epr = 1 - np.nansum(np.power(epr_rgbm_ - epr_prome, 2)) / np.nansum(np.power(epr_rgbm_ - np.nanmean(epr_rgbm_), 2))
+    r2_epr = round(max(0, r2_epr) * 100, significant_figures)
+    r2_ = [r2_entropy, r2_epr]
 
-    epr_prome = egbm.estimate_epr_gbm(t_midpoint_gbm, *params_epr[0])
-    epr_lower = egbm.estimate_epr_gbm(t_midpoint_gbm, *params_epr[1])
-    epr_upper = egbm.estimate_epr_gbm(t_midpoint_gbm, *params_epr[2])
+    if p_norm == 0:
+        ae_entropy = np.exp(0.5 * np.nanmean(np.log(np.power(np.abs(entropy_rgbm - entropy_prome), 2))))
+        ae_epr = np.exp(0.5 * np.nanmean(np.log(np.power(np.abs(epr_rgbm_ - epr_prome), 2))))
+    else:
+        ae_entropy = np.power(np.nanmean(np.power(np.abs(entropy_rgbm - entropy_prome), p)), 1 / p)
+        ae_epr = np.power(np.nanmean(np.power(np.abs(epr_rgbm_ - epr_prome), p)), 1 / p)
+
+    ae_ = [ae_entropy, ae_epr]
 
     # Resume parameters of regressions (params, R squared, Mean Absolute Error (MAE_p))
     df_final = pd.concat(
         [
             eda_mf.resume_params(
-                params = params_transient,
-                params_type = "Transient state",
-                params_names = ["time", "mu", "sigma", "threshold"],
-                y = hist_gbm,
-                y_fitted = transient_prome,
-                p_norm = p_norm,
-                significant_figures = significant_figures
-            ),
-            eda_mf.resume_params(
-                params = params_stationary,
-                params_type = "Stationary state",
-                params_names = ["threshold", "lambda"],
-                y = hist_gbm,
-                y_fitted = stationary_prome,
-                p_norm = p_norm,
-                significant_figures = significant_figures
-            ),
-            eda_mf.resume_params(
-                params = params_diffusion,
-                params_type = "Diffusion law",
-                params_names = ["coefficient", "exponent"],
-                y = variance_gbm,
-                y_fitted = diffusion_prome,
-                p_norm = p_norm,
-                significant_figures = significant_figures
-            ),
-            eda_mf.resume_params(
                 params = params_entropy,
                 params_type = "Entropy",
-                params_names = ["mu", "sigma", "amplitude_1", "amplitude_2", "phi", "entropy gauge"],
-                y = entropy_gbm,
+                params_names = ["mu", "sigma", "x0", "t0", "threshold", "amplitude", "entropy gauge"],
+                y = entropy_rgbm,
                 y_fitted = entropy_prome,
                 p_norm = p_norm,
                 significant_figures = significant_figures
@@ -448,8 +379,8 @@ def plot_geometric_brownian_motion(
             eda_mf.resume_params(
                 params = params_epr,
                 params_type = "Entropy production rate",
-                params_names = ["mu", "sigma", "amplitude_1", "amplitude_2", "phi", "epr gauge"],
-                y = epr_gbm,
+                params_names = ["mu", "sigma", "x0", "t0", "threshold", "amplitude", "epr gauge"],
+                y = epr_rgbm,
                 y_fitted = epr_prome,
                 p_norm = p_norm,
                 significant_figures = significant_figures
@@ -458,170 +389,72 @@ def plot_geometric_brownian_motion(
     )
 
     # Plot data
-    rcParams.update({"font.family": "serif", "text.usetex": usetex, "pgf.rcfonts": False})
-    fig, ax = plt.subplots(4, 1)
+    rcParams.update(
+        {
+            "font.family": "serif",
+            "text.usetex": usetex,
+            "pgf.rcfonts": False,
+            "text.latex.preamble": r"\usepackage{amsfonts}"
+        }
+    )
+    
+    fig, ax = plt.subplots(1, 2)
     fig.set_size_inches(w = width, h = height)
 
-    # Histogram of simulated data plot
-    ax[0].hist(
-        df_gbm[df_gbm["time"] == t_max]["value"],
-        bins = bins,
-        alpha = 0.19,
-        facecolor = "blue",
-        edgecolor = "darkblue",
-        density = density,
-        histtype = "stepfilled",
-        cumulative = False,
-        label = "Simulated data"
-    )
-    ax[0].scatter(bins_midpoint_gbm, hist_gbm, color = "darkblue", label = "Simulated data")
-    ax[0].plot(bins_midpoint_gbm, hist_transient, color = "red", label = "Transient")
-    ax[0].plot(bins_midpoint_gbm, transient_prome, color = "orange", label = "Transient fitting")
-    ax[0].fill_between(
-        bins_midpoint_gbm,
-        transient_lower,
-        transient_upper,
-        where = (
-            (transient_upper >= transient_lower) &
-            (transient_upper >= transient_prome) &
-            (transient_prome >= transient_lower)
-        ),
-        alpha = 0.19,
-        facecolor = "orange",
-        interpolate = True,
-        label = "Theory fitting"
-    )
-    ax[0].plot(bins_midpoint_gbm + mu * t_max, hist_stationary, color = "black", label = "Stationary")    
-    ax[0].plot(bins_midpoint_gbm + mu * t_max, stationary_prome, color = "darkgreen", label = "Stationary fitting")
-    ax[0].fill_between(
-        bins_midpoint_gbm + mu * t_max, # mu*t Taking into account temporal shift 
-        stationary_lower,
-        stationary_upper,
-        where = (
-            (stationary_upper >= stationary_lower) &
-            (stationary_upper >= stationary_prome) &
-            (stationary_prome >= stationary_lower)
-        ),
-        alpha = 0.19,
-        facecolor = "darkgreen",
-        interpolate = True,
-        label = "Stationary fitting"
-    )
-    
-    # Diffusion coefficient plot
-    ax[1].plot(mean_gbm, variance_gbm, label = "Diffusion")
-    ax[1].plot(mean_gbm, diffusion_prome, color = "darkgreen", label = "Diffusion fitting")
-    ax[1].fill_between(
-        mean_gbm,
-        diffusion_lower,
-        diffusion_upper,
-        where = (
-            (diffusion_upper >= diffusion_lower) &
-            (diffusion_upper >= diffusion_prome) &
-            (diffusion_prome >= diffusion_lower)
-        ),
-        alpha = 0.19,
-        facecolor = "darkgreen",
-        interpolate = True,
-        label = "Diffusion fitting"
-    )
-
     # Entropy plot
-    ax[2].plot(t_gbm, entropy_gbm, label = "Entropy data")
-    ax[2].plot(t_gbm, entropy_prome, color = "darkgreen", label = "Entropy fitting")
-    ax[2].fill_between(
-        t_gbm,
-        entropy_lower + entropy_prome,
-        entropy_upper + entropy_prome,
-        where = (
-            (entropy_upper >= entropy_lower) &
-            (entropy_upper >= entropy_prome) &
-            (entropy_prome >= entropy_lower)
-        ),
-        alpha = 0.19,
-        facecolor = "darkgreen",
-        interpolate = True,
-        label = "Entropy fitting"
-    )
+    entropy_gbm = egbm.estimate_shannon_entropy_gbm(t_rgbm, mu, sigma, x0, t0, params_entropy[0][5], entropy_rgbm[0])
+    ax[0].scatter(t_rgbm, entropy_rgbm, c = "darkblue", s = 8, label = "Simulated data")
+    ax[0].plot(t_rgbm, entropy_prome, c = "firebrick", lw = 2, label = "Theoretical Entropy")
+    ax[0].plot(t_rgbm, entropy_gbm, c = "darkgreen", lw = 2, label = "Standard GBM")
     
     # Entropy production rate plot
-    ax[3].hlines(y = 0.0, xmin = 0.0, xmax = t_max, color = "r", linewidth = 2, zorder = 2)
-    ax[3].plot(t_midpoint_gbm, epr_gbm, alpha = 0.3, label = "Entropy production rate")
-    ax[3].plot(epr_smooth_gbm_time, epr_smooth_gbm_mean, label = "Entropy production rate smoothing")
-    ax[3].fill_between(
-        epr_smooth_gbm_time,
-        epr_smooth_gbm_lower,
-        epr_smooth_gbm_upper,
-        where = (
-            (epr_smooth_gbm_upper >= epr_smooth_gbm_lower) &
-            (epr_smooth_gbm_upper >= epr_smooth_gbm_mean) &
-            (epr_smooth_gbm_mean >= epr_smooth_gbm_lower)
-        ),
-        alpha = 0.19,
-        facecolor = "orange",
-        interpolate = True,
-        label = "Entropy production rate smoothing"
-    )
-    ax[3].plot(t_midpoint_gbm, epr_prome, color = "darkgreen", label = "Entropy production rate fitting")
-    ax[3].fill_between(
-        t_midpoint_gbm,
-        epr_lower,
-        epr_upper,
-        where = (
-            (epr_upper >= epr_lower) &
-            (epr_upper >= epr_prome) &
-            (epr_prome >= epr_lower)
-        ),
-        alpha = 0.19,
-        facecolor = "darkgreen",
-        interpolate = True,
-        label = "Entropy production rate fitting"
-    )
+    epr_gbm = egbm.estimate_epr_gbm(t_midpoint_rgbm, mu, t0, params_entropy[0][5], params_epr[0][6])
+    offset = np.min([np.nanmin(epr_gbm), np.nanmin(epr_rgbm), np.nanmin(epr_prome)])
+    ax[1].scatter(t_midpoint_rgbm, epr_rgbm - offset, c = "darkblue", alpha = 0.99, s = 8, label = "Simulated data")
+    ax[1].plot(t_midpoint_rgbm, epr_prome - offset, c = "firebrick", lw = 2, label = "Theoretical EPR")
+    ax[1].plot(t_midpoint_rgbm, epr_gbm - offset, c = "darkgreen", lw = 2, label = "Standard GBM")
     
-    # Histogram and Entropy plot - Other features ----
-    titles_ = [
-        "Restricted Geometric Brownian Motion - Stationary PDF",
-        "Restricted Geometric Brownian Motion - Diffusion",
-        "Restricted Geometric Brownian Motion - Entropy",
-        "Restricted Geometric Brownian Motion - Entropy production rate"
+    # Entropy plot - Other features ----
+    titles_ = ["Entropy", "Entropy production rate"]
+    titles_x = [r"Time $t$", r"Time $t$"]
+    titles_y = [
+        r"$\mathbb{H}_{{1}}(\Psi_{{GBM}},t)$",
+        r"$\frac{d}{dt}\left[\mathbb{H}_{{1}}(\Psi_{{GBM}},t)-\mathbb{H}_{{1}}(\Psi_{{GBM}},0)\right]$"
     ]
-    titles_x = ["$x$", "Mean", "Time", "Time"]
-    titles_y = ["$P(x)$", "Variance", "Shannon entropy", "Entropy production rate"]
 
-    for j in [0, 1, 2, 3]:
+    for j in [0, 1]:
         ax[j].tick_params(which = "major", direction = "in", top = True, right = True, labelsize = fontsize_labels, length = 12)
         ax[j].tick_params(which = "minor", direction = "in", top = True, right = True, labelsize = fontsize_labels, length = 6)
         ax[j].xaxis.set_major_locator(mtick.MaxNLocator(n_x_breaks))
         ax[j].xaxis.set_minor_locator(mtick.MaxNLocator(4 * n_x_breaks))
         ax[j].yaxis.set_major_locator(mtick.MaxNLocator(n_y_breaks))
         ax[j].yaxis.set_minor_locator(mtick.MaxNLocator(5 * n_y_breaks))
-
-        #ax[j].xaxis.set_major_formatter(mtick.FuncFormatter(lambda x, _: mf.define_sci_notation_latex(x, significant_figures)))
-        #ax[j].yaxis.set_major_formatter(mtick.FuncFormatter(lambda x, _: mf.define_sci_notation_latex(x, significant_figures)))
-        #y_tick_labels = mf.define_sci_notation_latex_vectorize(ax[j].yaxis.get_majorticklocs(), significant_figures)
-        #ax[j].yaxis.set_major_formatter(mtick.FuncFormatter(lambda x, pos: y_tick_labels[pos]))
-        
         ax[j].tick_params(axis = "x", labelrotation = 90)
-        ax[j].set_xlabel(titles_x[j], fontsize = fontsize_labels)        
-        ax[j].set_ylabel(titles_y[j], fontsize = fontsize_labels)
+        ax[j].set_xlabel(titles_x[j], fontsize = fontsize_labels + 2)        
+        ax[j].set_ylabel(titles_y[j], fontsize = fontsize_labels + 2)
+        ax[j].set_xscale(value = "log", subs = [2, 3, 4, 5, 6, 7, 8, 9])
         
-        #if j == 3:
-        #    ax[j].set_xscale(value = "log")        
-        #    ax[j].set_yscale(value = "log")        
+        if j == 1:
+            ax[j].set_yscale(value = "log", subs = [2, 3, 4, 5, 6, 7, 8, 9])
         
         ax[j].set_title(
-            r"({}) {}".format(chr(j + 65), titles_[j]),
+            r"({}) {}, $R^{{2}}={}\%$, $MAE_{{p}}=$ {}".format(
+                chr(j + 65),
+                titles_[j],
+                r2_[j],
+                mf.define_sci_notation_latex(number = ae_[j], significant_figures = significant_figures)
+            ),
             loc = "left",
             y = 1.005,
             fontsize = fontsize_labels
         )
         ax[j].legend(fancybox = fancy_legend, shadow = True, ncol = n_cols, fontsize = fontsize_legend)
 
-    plt.show()
+    plt.plot()
     fig.tight_layout()
     if save_figures:
         fig.savefig(
-            "{}/eda_{}_{}.png".format(
+            "{}/entropy_{}_{}.png".format(
                 output_path,
                 information_name,
                 re.sub("-", "", input_generation_date)

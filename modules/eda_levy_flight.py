@@ -6,18 +6,12 @@ Created on Sat April 22 2024
 """
 
 # Libraries ----
-import re
 import warnings
-import numpy as np # type: ignore
 import pandas as pd # type: ignore
-import misc_functions as mf
-import matplotlib.pyplot as plt # type: ignore
-import matplotlib.ticker as mtick # type: ignore
 import eda_misc_functions as eda_mf
 import estimate_stochastic_process as esp
 
 from scipy.optimize import curve_fit # type: ignore
-from matplotlib import rcParams # type: ignore
 
 # Global options ----
 warnings.filterwarnings("ignore")
