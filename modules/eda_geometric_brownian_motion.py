@@ -419,7 +419,8 @@ def plot_entropy_geometric_brownian_motion(
     titles_x = [r"Time $t$", r"Time $t$"]
     titles_y = [
         r"$\mathbb{H}_{{1}}(\Psi_{{GBM}},t)$",
-        r"$\frac{d}{dt}\left[\mathbb{H}_{{1}}(\Psi_{{GBM}},t)-\mathbb{H}_{{1}}(\Psi_{{GBM}},0)\right]$"
+        #r"$\frac{d}{dt}\left[\mathbb{H}_{{1}}(\Psi_{{GBM}},t)-\mathbb{H}_{{1}}(\Psi_{{GBM}},0)\right]$"
+        r"$\frac{d}{dt}\mathbb{H}_{{1}}(\Psi_{{GBM}},t)$"
     ]
 
     for j in [0, 1]:
