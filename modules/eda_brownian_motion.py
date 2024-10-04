@@ -334,9 +334,9 @@ def plot_entropy_brownian_motion(
 
     # Mask for correct plot of entropy production rate
     if entropy_rbm[1] - entropy_rbm[0] > 0:
-        mask = epr_prome > 0
+        mask = ((epr_prome > 0) & (t_midpoint_rbm > 0.01))
     else:
-        mask = epr_prome < 0
+        mask = ((epr_prome < 0) & (t_midpoint_rbm > 0.01))
 
     t_midpoint_rbm_ = t_midpoint_rbm[mask]
     epr_rbm_ = epr_rbm[mask]
